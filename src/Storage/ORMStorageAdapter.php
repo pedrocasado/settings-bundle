@@ -75,10 +75,14 @@ final class ORMStorageAdapter implements StorageAdapterInterface
 
      * @return AbstractSettingsORMEntry
      */
-    private function getEntityObject(ObjectManager $entityManager, string $key, string $entityClass): AbstractSettingsORMEntry
+    private function getEntityObject(ObjectManager $entityManager, string $key, string $entityClass, bool $ignoreCache = false): AbstractSettingsORMEntry
     {
         if (!is_subclass_of($entityClass, AbstractSettingsORMEntry::class)) {
             throw new \InvalidArgumentException('The entity class must be a subclass of ' . AbstractSettingsORMEntry::class);
+        }
+
+        if ($ignoreCache) {
+            $this->cache = [];
         }
 
         //Check if we already have the entity in the cache
@@ -163,8 +167,10 @@ final class ORMStorageAdapter implements StorageAdapterInterface
                 $this->preloadAllEntityObjects($entityManager, $entityClass);
             }
 
+            $ignoreCache = $options['ignore_cache'] ?? false;
+
             //Retrieve the entity object & return the data
-            return $this->getEntityObject($entityManager, $key, $entityClass)->getData();
+            return $this->getEntityObject($entityManager, $key, $entityClass, $ignoreCache)->getData();
         } catch (TableNotFoundException $exception) {
             //If the table does not exist, we fail gracefully and return null to indicate that no data was persisted yet
 

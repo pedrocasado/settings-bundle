@@ -70,8 +70,13 @@ final class SettingsHydrator implements SettingsHydratorInterface
         /** @var StorageAdapterInterface $storageAdapter */
         $storageAdapter = $this->storageAdapterRegistry->getStorageAdapter($metadata->getStorageAdapter());
 
+        $storageAdapterOptions = [
+            'ignore_cache' => $ignoreCache,
+            ...$metadata->getStorageAdapterOptions()
+        ];
+
         //Retrieve the normalized representation of the settings object from the storage adapter.
-        $normalizedRepresentation = $storageAdapter->load($metadata->getStorageKey(), $metadata->getStorageAdapterOptions());
+        $normalizedRepresentation = $storageAdapter->load($metadata->getStorageKey(), $storageAdapterOptions);
 
         //If the normalized representation is null, the settings object has not been persisted yet, we can return it as is.
         if ($normalizedRepresentation === null) {

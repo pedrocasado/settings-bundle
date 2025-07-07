@@ -122,7 +122,7 @@ final class SettingsManager implements SettingsManagerInterface, ResetInterface
         return $settings;
     }
 
-    public function reload(string|object $settings, bool $cascade = true): object
+    public function reload(string|object $settings, bool $cascade = true, bool $ignoreCache = false): object
     {
         if (is_string($settings)) {
             $settings = $this->get($settings);
@@ -132,7 +132,7 @@ final class SettingsManager implements SettingsManagerInterface, ResetInterface
         $this->resetToDefaultValues($settings);
 
         //Reload the settings class from the storage adapter
-        $this->settingsHydrator->hydrate($settings, $this->metadataManager->getSettingsMetadata($settings));
+        $this->settingsHydrator->hydrate($settings, $this->metadataManager->getSettingsMetadata($settings), $ignoreCache);
 
         //When cascade is enabled, then we also need to reload all embedded settings
         if ($cascade) {

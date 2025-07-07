@@ -58,7 +58,7 @@ interface SettingsManagerInterface
      * @template T of object
      * @phpstan-return T
      */
-    public function reload(object|string $settings, bool $cascade = true): object;
+    public function reload(object|string $settings, bool $cascade = true, bool $ignoreCache = false): object;
 
     /**
      * Save the configuration class to the storage provider. If no configuration class is given, all configuration
