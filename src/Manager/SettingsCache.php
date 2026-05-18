@@ -32,6 +32,8 @@ use Jbtronics\SettingsBundle\Helper\PropertyAccessHelper;
 use Jbtronics\SettingsBundle\Metadata\SettingsMetadata;
 use Psr\Cache\CacheItemInterface;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 
 /**
  * @internal
@@ -39,10 +41,12 @@ use Symfony\Component\Cache\Adapter\AdapterInterface;
 final class SettingsCache implements SettingsCacheInterface
 {
     private const CACHE_KEY_PREFIX = 'jbtronics_settings_';
+    private const CACHE_TAG = 'jbtronics_settings_cached_data';
 
     public function __construct(
-        private readonly AdapterInterface $cache,
-        private readonly int $ttl = 0
+        private readonly TagAwareAdapterInterface $cache,
+        private readonly int $ttl = 0,
+        private readonly bool $invalidateOnEnvChange = true,
     )
     {
     }
@@ -69,7 +73,12 @@ final class SettingsCache implements SettingsCacheInterface
 
     public function setData(SettingsMetadata $settings, object $value): void
     {
-        $item = $this->getCacheItem($settings)->set($this->toCacheableRepresentation($settings, $value));
+        $item = $this->getCacheItem($settings);
+        $item->set($this->toCacheableRepresentation($settings, $value));
+        if (!$this->cache instanceof TagAwareAdapterInterface) {
+            throw new \RuntimeException('The cache pool must be tag-aware to use the settings cache.');
+        }
+        $item->tag(self::CACHE_TAG);
         //Set the TTL if it is greater than 0
         if ($this->ttl > 0) {
             $item->expiresAfter($this->ttl);
@@ -82,15 +91,32 @@ final class SettingsCache implements SettingsCacheInterface
         $this->cache->deleteItem($this->getCacheKey($settings));
     }
 
-    private function getCacheItem(SettingsMetadata $settings): CacheItemInterface
+    private function getCacheItem(SettingsMetadata $settings): ItemInterface
     {
         return $this->cache->getItem($this->getCacheKey($settings));
+    }
+
+    private function getEnvVarHash(SettingsMetadata $settings): string
+    {
+        //Only get the part of $_ENV that is relevant for the settings
+        $relevantEnvVars = $settings->getCacheAffectingEnvVars();
+        if (empty($relevantEnvVars)) {
+            return 'noenv';
+        }
+
+        $relevantEnvData = array_intersect_key($_ENV, array_flip($relevantEnvVars));
+        return substr(sha1(json_encode($relevantEnvData, JSON_THROW_ON_ERROR)), 0, 8);
     }
 
     private function getCacheKey(SettingsMetadata $settings): string
     {
         //The storage key should be unique enough to avoid conflicts
-        return self::CACHE_KEY_PREFIX . $settings->getStorageKey();
+        $tmp = self::CACHE_KEY_PREFIX . $settings->getStorageKey();
+
+        if ($this->invalidateOnEnvChange) {
+            $tmp .= '_' . $this->getEnvVarHash($settings);
+        }
+        return $tmp;
     }
 
     /**
@@ -120,5 +146,10 @@ final class SettingsCache implements SettingsCacheInterface
         }
 
         return $data;
+    }
+
+    public function invalidateAll(): void
+    {
+        $this->cache->invalidateTags([self::CACHE_TAG]);
     }
 }

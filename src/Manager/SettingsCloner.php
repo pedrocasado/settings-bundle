@@ -32,12 +32,12 @@ use Jbtronics\SettingsBundle\Exception\ParameterDataNotCloneableException;
 use Jbtronics\SettingsBundle\Helper\PropertyAccessHelper;
 use Jbtronics\SettingsBundle\Metadata\MetadataManager;
 use Jbtronics\SettingsBundle\Metadata\ParameterMetadata;
+use Jbtronics\SettingsBundle\Proxy\LegacyProxyHelper;
 use Jbtronics\SettingsBundle\Proxy\ProxyFactoryInterface;
 use Jbtronics\SettingsBundle\Proxy\SettingsProxyInterface;
 use Jbtronics\SettingsBundle\Settings\CloneAndMergeAwareSettingsInterface;
 use Jbtronics\SettingsBundle\Settings\ResettableSettingsInterface;
 use PhpParser\Node\Param;
-use Symfony\Component\VarExporter\LazyObjectInterface;
 
 /**
  * @internal
@@ -90,8 +90,8 @@ final class SettingsCloner implements SettingsClonerInterface
                 $embeddedClone = $embeddedClones[$embeddedSetting->getTargetClass()];
             } else {
                 //Otherwise, we need to create a new clone, which we lazy load, via our proxy system
-                $embeddedClone = $this->proxyFactory->createProxy($embeddedSetting->getTargetClass(), function (SettingsProxyInterface $instance) use ($embeddedSetting, $settings, $embeddedClones) {
-                    return $this->createCloneInternal(PropertyAccessHelper::getProperty($settings, $embeddedSetting->getPropertyName()), $embeddedClones, $instance);
+                $embeddedClone = $this->proxyFactory->createProxy($embeddedSetting->getTargetClass(), function (object $instance) use ($embeddedSetting, $settings, $embeddedClones) {
+                    $this->createCloneInternal(PropertyAccessHelper::getProperty($settings, $embeddedSetting->getPropertyName()), $embeddedClones, $instance);
                 });
             }
 
@@ -133,7 +133,12 @@ final class SettingsCloner implements SettingsClonerInterface
                 $copyEmbedded = PropertyAccessHelper::getProperty($copy, $embeddedSetting->getPropertyName());
 
                 //If the embedded setting is a lazy proxy and it was not yet initialized, we can skip it as the data was not modified
-                if ($copyEmbedded instanceof SettingsProxyInterface && $copyEmbedded instanceof LazyObjectInterface && !$copyEmbedded->isLazyObjectInitialized()) {
+                //@phpstan-ignore-next-line (PHPStan does not handle the dynamic checks here well)
+                if (PHP_VERSION_ID >= 80400 && (new \ReflectionClass($copyEmbedded))->isUninitializedLazyObject($copyEmbedded)) { //PHP native way
+                    continue;
+                }
+
+                if ($copyEmbedded instanceof SettingsProxyInterface && LegacyProxyHelper::isLegacyProxyUninitialized($copyEmbedded)) { //Fallback for older PHP versions
                     continue;
                 }
 

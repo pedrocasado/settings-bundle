@@ -40,7 +40,7 @@ final class Configuration implements ConfigurationInterface
         $treeBuilder = new TreeBuilder('jbtronics_settings');
         $rootNode = $treeBuilder->getRootNode();
 
-        $rootNode
+        $rootNode // @phpstan-ignore-line
             ->children()
 
             ->arrayNode('search_paths')
@@ -56,6 +56,17 @@ final class Configuration implements ConfigurationInterface
 
             ->booleanNode('save_after_migration')->defaultTrue()->end()
 
+            ->arrayNode('yaml_mapping_paths')
+                ->defaultValue([])
+                ->scalarPrototype()->end()
+            ->end()
+
+            ->arrayNode('metadata_compiler_providers')
+                ->treatNullLike([])
+                ->defaultValue([])
+                ->scalarPrototype()->end()
+            ->end()
+
             ->end();
 
         $this->addFileStorageConfiguration($rootNode);
@@ -67,21 +78,26 @@ final class Configuration implements ConfigurationInterface
 
     private function addCacheConfiguration(ArrayNodeDefinition $rootNode): void
     {
-        $rootNode
+        $rootNode  //@phpstan-ignore-line
             ->children()
             ->arrayNode('cache')
                 ->addDefaultsIfNotSet()
                 ->children()
-                ->scalarNode('service')->defaultValue('cache.app')->end()
+                //Use the system cache pool for metadata by default
+                ->scalarNode('metadata_service')->defaultValue('cache.system')->end()
                 //By default, use the global cache pool
+                ->scalarNode('service')->defaultValue('cache.app.taggable')->end()
+
+
                 ->booleanNode('default_cacheable')->defaultFalse()->end()
                 ->integerNode('ttl')->defaultValue(0)->end()
+                ->booleanNode('invalidate_on_env_change')->defaultTrue()->end()
             ->end();
     }
 
     private function addFileStorageConfiguration(ArrayNodeDefinition $rootNode): void
     {
-        $rootNode
+        $rootNode //@phpstan-ignore-line
             ->children()
             ->arrayNode('file_storage')
                 ->addDefaultsIfNotSet()
@@ -93,7 +109,7 @@ final class Configuration implements ConfigurationInterface
 
     private function addORMStorageConfiguration(ArrayNodeDefinition $rootNode): void
     {
-        $rootNode
+        $rootNode //@phpstan-ignore-line
             ->children()
             ->arrayNode('orm_storage')
                 ->addDefaultsIfNotSet()

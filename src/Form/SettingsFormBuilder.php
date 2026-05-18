@@ -108,6 +108,9 @@ final class SettingsFormBuilder implements SettingsFormBuilderInterface
             $options = array_merge($options, $embedded->getFormOptions());
         }
 
+        $options['embedded_settings_metadata'] = $embedded;
+        $options['settings_metadata'] = $embeddedMeta;
+
         $subBuilder = $builder->getFormFactory()->createNamedBuilder($embedded->getPropertyName(), options: $options);
 
 
@@ -158,6 +161,8 @@ final class SettingsFormBuilder implements SettingsFormBuilderInterface
             'help' => $parameterMetadata->getDescription(),
             //By default, the parameter is required if the property is not nullable
             'required' => !$parameterMetadata->isNullable(),
+            'parameter_metadata' => $parameterMetadata,
+            'settings_metadata' => $this->metadataManager->getSettingsMetadata($parameterMetadata->getClassName()),
         ]);
 
         //Then add the defaults from the parameter type (if any)

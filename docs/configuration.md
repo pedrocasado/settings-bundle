@@ -21,6 +21,13 @@ jbtronics_settings:
     search_paths:
         - '%kernel.project_dir%/src/Settings'
 
+    # Directories containing YAML mapping files for settings classes.
+    # This allows defining settings metadata in YAML instead of PHP attributes.
+    # See the YAML Configuration documentation for more information.
+    yaml_mapping_paths: []
+    # Example:
+    #   - '%kernel.project_dir%/config/settings'
+
     # The class name of the service, which is used on all storage adapters if
     # non is set explicitly. Can be null, if the storage adapter is configured # explicitly everywhere
     default_storage_adapter: ~
@@ -38,11 +45,19 @@ jbtronics_settings:
 
     # The directory where the proxy classes should be stored
     proxy_dir: '%kernel.cache_dir%/jbtronics_settings/proxies'
+    
+    # ADVANCED: The metadata drivers to retrieve the settings metadata, when the container is compiled.
+    # You do not need to configure this, unless you implement a custom metadata driver, whose settings should be dependency injectable.
+    # By default, the YamlDriver is registered, when yaml mapping paths are configured
+    metadata_compiler_providers: ~
+    # Example:
+    # - 'Jbtronics\SettingsBundle\Metadata\Driver\YamlDriver'
 
     # The configuration for caching of settings
     cache:
         # The service id of the cache pool in which the settings should be cached
-        service: 'cache.app'
+        service: 'cache.app.taggable'
+        service_metadata: 'cache.system'
         
         # The default value for all classes, where the cacheable option is not explictly set
         # True means, that the settings are cacheable and will be cached if possible
@@ -51,6 +66,10 @@ jbtronics_settings:
         # The time in seconds, after which the cached settings expire
         # Zero means, that the settings never expire
         ttl: 0
+        
+        # If this is set to true, the cached settings data will be invalidated, if the environment variables change
+        # If this is set to false, you might need to clear the cache manually, to pick up changes to environment variables
+        invalidate_on_env_change: true
 
     # The configuration for file based storage adapters
     file_storage:

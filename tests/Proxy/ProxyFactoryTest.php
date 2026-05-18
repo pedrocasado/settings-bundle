@@ -30,7 +30,6 @@ use Jbtronics\SettingsBundle\Proxy\ProxyFactoryInterface;
 use Jbtronics\SettingsBundle\Proxy\SettingsProxyInterface;
 use Jbtronics\SettingsBundle\Tests\TestApplication\Settings\SimpleSettings;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\VarExporter\LazyObjectInterface;
 
 class ProxyFactoryTest extends KernelTestCase
 {
@@ -47,6 +46,10 @@ class ProxyFactoryTest extends KernelTestCase
 
     public function testGenerateProxyClassFiles(): void
     {
+        if (PHP_VERSION_ID >= 80400) {
+            $this->markTestSkipped('Skipping test on PHP 8.4 and higher, because we use PHP 8.4 native objects and do not need proxy classes anymore.');
+        }
+
         //Ensure that this method does not throw an exception
         $this->proxyFactory->generateProxyClassFiles([SimpleSettings::class]);
 
@@ -58,21 +61,17 @@ class ProxyFactoryTest extends KernelTestCase
     {
         $initializer = function (SimpleSettings $instance) {
             $instance->setValue1('Initialized');
-            return $instance;
         };
 
-        /** @var LazyObjectInterface&SimpleSettings&SettingsProxyInterface $proxy */
+        /** @var SimpleSettings&SettingsProxyInterface $proxy */
         $proxy = $this->proxyFactory->createProxy(SimpleSettings::class, $initializer);
         $this->assertInstanceOf(SimpleSettings::class, $proxy);
-        $this->assertInstanceOf(SettingsProxyInterface::class, $proxy);
 
-        //The proxy should also be instance of the LazyObjectInterface
-        $this->assertInstanceOf(LazyObjectInterface::class, $proxy);
-        //Directly after creation, the proxy should not be initialized
-        $this->assertFalse($proxy->isLazyObjectInitialized());
+        $this->assertTrue(LazyObjectTestHelper::isLazyObject($proxy));
+        $this->assertFalse(LazyObjectTestHelper::isLazyObjectInitialized($proxy));
 
         //When we access a property, the proxy should be initialized
         $this->assertEquals('Initialized', $proxy->getValue1());
-        $this->assertTrue($proxy->isLazyObjectInitialized());
+        $this->assertTrue(LazyObjectTestHelper::isLazyObjectInitialized($proxy));
     }
 }

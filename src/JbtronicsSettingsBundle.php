@@ -28,6 +28,7 @@ namespace Jbtronics\SettingsBundle;
 use Closure;
 use Jbtronics\SettingsBundle\DependencyInjection\JbtronicsSettingsExtension;
 use Jbtronics\SettingsBundle\DependencyInjection\ConfigureInjectableSettingsPass;
+use Jbtronics\SettingsBundle\DependencyInjection\TagSettingsPass;
 use Jbtronics\SettingsBundle\Proxy\Autoloader;
 use Jbtronics\SettingsBundle\Proxy\ProxyFactoryInterface;
 use Jbtronics\SettingsBundle\Settings\Settings;
@@ -51,6 +52,7 @@ final class JbtronicsSettingsBundle extends AbstractBundle
         parent::build($container);
         $this->processSettingsServices($container);
 
+        $container->addCompilerPass(new TagSettingsPass());
         $container->addCompilerPass(new ConfigureInjectableSettingsPass());
     }
 
@@ -62,13 +64,21 @@ final class JbtronicsSettingsBundle extends AbstractBundle
                 Settings $attribute,
                 \Reflector $reflector
             ): void {
-                //If the settings class is dependency injectable, add the injectable settings tag
-                if ($attribute->canBeDependencyInjected()) {
-                    $definition->addTag(JbtronicsSettingsExtension::TAG_INJECTABLE_SETTINGS);
-                } else {
-                    //If the settings class is not dependency injectable, remove the injectable settings tag
-                    $definition->addTag(ConfigureInjectableSettingsPass::TAG_TO_REMOVE);
+                if (method_exists($definition, 'addResourceTag')) { //If Symfony 7.3+ use ressource tags instead of normal tags
+                    $definition->addResourceTag(JbtronicsSettingsExtension::RESSOURCE_TAG_SETTINGS,[
+                        'injectable' => $attribute->canBeDependencyInjected()
+                    ]);
+                } else { //Fallback for older symfony versions
+                    //If the settings class is dependency injectable, add the injectable settings tag
+                    if ($attribute->canBeDependencyInjected()) {
+                        $definition->addTag(JbtronicsSettingsExtension::TAG_INJECTABLE_SETTINGS);
+                    } else {
+                        //If the settings class is not dependency injectable, remove the injectable settings tag
+                        $definition->addTag(ConfigureInjectableSettingsPass::TAG_TO_REMOVE);
+                    }
                 }
+
+
             }
         );
     }

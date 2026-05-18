@@ -44,7 +44,6 @@ use Jbtronics\SettingsBundle\Tests\TestApplication\Settings\SimpleSettings;
 use Jbtronics\SettingsBundle\Tests\TestApplication\Settings\ValidatableSettings;
 use Jbtronics\SettingsBundle\Tests\TestApplication\Settings\VersionedSettings;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\VarExporter\LazyObjectInterface;
 
 class EnvVarToSettingsMigratorTest extends KernelTestCase
 {
@@ -154,7 +153,6 @@ class EnvVarToSettingsMigratorTest extends KernelTestCase
         $this->settingsHydrator->persist($obj, $metadata);
 
         $original = $this->storageAdapter->load($metadata->getStorageKey()) ?? [];
-        var_dump($original);
         $this->assertIsArray($original);
 
         $this->service->migrate($class);

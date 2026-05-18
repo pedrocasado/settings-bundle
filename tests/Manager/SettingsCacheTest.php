@@ -133,4 +133,42 @@ class SettingsCacheTest extends KernelTestCase
         //Invalidate cache to prevent side-effects
         $this->settingsCache->invalidateData($metadata);
     }
+
+    public function testEnvVARInvalidation(): void
+    {
+        $_ENV['ENV_VALUE2'] = "initial";
+
+        $metadata = $this->metadataManager->getSettingsMetadata(CacheableSettings::class);
+        $settings = new CacheableSettings();
+        $this->settingsCache->setData($metadata, $settings);
+        $this->assertTrue($this->settingsCache->hasData($metadata));
+
+        //Change the env var, the cache must be invalidated
+        $_ENV['ENV_VALUE2'] = "changed";
+        $this->assertFalse($this->settingsCache->hasData($metadata));
+        $this->settingsCache->setData($metadata, $settings);
+        $this->assertTrue($this->settingsCache->hasData($metadata));
+
+        unset($_ENV['ENV_VALUE2']);
+        //The cache must be invalidated again
+        $this->assertFalse($this->settingsCache->hasData($metadata));
+
+        $this->settingsCache->invalidateData($metadata);
+    }
+
+    public function testInvalidateAll(): void
+    {
+        $simpleMetadata = $this->metadataManager->getSettingsMetadata(SimpleSettings::class);
+        $simpleSettings = new SimpleSettings();
+        $this->settingsCache->setData($simpleMetadata, $simpleSettings);
+        $this->assertTrue($this->settingsCache->hasData($simpleMetadata));
+        $cacheableMetadata = $this->metadataManager->getSettingsMetadata(CacheableSettings::class);
+        $cacheableSettings = new CacheableSettings();
+        $this->settingsCache->setData($cacheableMetadata, $cacheableSettings);
+        $this->assertTrue($this->settingsCache->hasData($cacheableMetadata));
+
+        $this->settingsCache->invalidateAll();
+        $this->assertFalse($this->settingsCache->hasData($simpleMetadata));
+        $this->assertFalse($this->settingsCache->hasData($cacheableMetadata));
+    }
 }
